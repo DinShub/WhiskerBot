@@ -1,6 +1,7 @@
 import Config from './config/config';
 import { ChannelType, Client, GatewayIntentBits, Message } from 'discord.js';
 import { messageHandler } from './handlers/message.handler';
+import { connectDB } from './config/db';
 
 const client = new Client({
 	intents: [
@@ -22,4 +23,6 @@ client.on(
 	async (message: Message) => await messageHandler(client, message)
 );
 
-client.login(Config.token);
+connectDB().then(() => {
+	client.login(Config.token);
+});
