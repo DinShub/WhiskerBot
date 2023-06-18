@@ -1,8 +1,9 @@
 import { ChannelType, Client, Message } from 'discord.js';
 import Config from '../config/config';
-import { Position, pgnWrite, Game } from 'kokopu';
+import { Position, pgnWrite, Game, pgnRead } from 'kokopu';
 import { ChessGameModel } from '../models/chess-game.model';
 import { logger } from '../config/logger';
+import { Messages } from '../enums/messages.enum';
 
 export const messageHandler = async (client: Client, message: Message) => {
 	try {
@@ -16,7 +17,7 @@ export const messageHandler = async (client: Client, message: Message) => {
 		if (!content) return;
 
 		switch (content) {
-			case 'ping':
+			case Messages.PING:
 				const channelId = message.channelId;
 				const channel = getChannel(client, channelId);
 
@@ -24,12 +25,65 @@ export const messageHandler = async (client: Client, message: Message) => {
 					channel.send('pong');
 				}
 				break;
-			case 'chess':
+			case Messages.CHESS:
 				await handleChess(client, message);
+				break;
+			default:
+				await handleDefaultMessage(client, message, content);
 				break;
 		}
 	} catch (error) {
 		logger.error(error.message);
+	}
+};
+
+const handleDefaultMessage = async (
+	client: Client,
+	message: Message,
+	content: string
+) => {
+	logger.info('Handling default message');
+
+	// check if it's a chess move
+	// Credits to ChatGPT for the next regex
+	const moveValidatorRegex = RegExp(
+		'^([PNBRQK]?[a-h]?[1-8]?[x]?[a-h][1-8](=[PNBRQK])?[+#]?|O-O[-O]?[+#]?|1-0|0-1|1/2-1/2)$'
+	);
+	if (moveValidatorRegex.test(content)) {
+		logger.info('Valid chess move');
+		await handleChessMove(client, message, content);
+	}
+};
+
+const handleChessMove = async (
+	client: Client,
+	message: Message,
+	content: string
+) => {
+	// get the game
+	const game = await ChessGameModel.findOne({
+		user: message.author.username,
+		active: true,
+	});
+	console.log(game);
+
+	// create the position
+	const position = new Position(game.fen);
+	console.log(position);
+
+	// validate the move
+	if (position.play(content)) {
+		console.log(position);
+
+		// save the game
+		const newGame = await ChessGameModel.findByIdAndUpdate(game._id, {
+			fen: position.fen(),
+			$push: { moveList: content },
+		});
+		const channel = getChannel(client, message.channelId);
+		if (channel.type === ChannelType.GuildText) {
+			channel.send(position.fen());
+		}
 	}
 };
 
@@ -51,7 +105,7 @@ const handleChess = async (client: Client, message: Message) => {
 
 	const game = new Position();
 	const dbGame = await ChessGameModel.create({
-		user: 'test',
+		user: username,
 		fen: game.fen(),
 	});
 	if (channel.type === ChannelType.GuildText) {

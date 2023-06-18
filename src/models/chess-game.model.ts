@@ -1,10 +1,11 @@
-import { Schema, model } from 'mongoose';
+import { Schema, Types, model } from 'mongoose';
 
 export interface ChessGame {
 	user: string;
 	fen: string;
 	moveList: string[];
 	active: boolean;
+	_id?: Types.ObjectId;
 }
 
 const chessGameScheme = new Schema<ChessGame>({
