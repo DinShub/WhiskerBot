@@ -2,6 +2,7 @@ import Config from './config/config';
 import { ChannelType, Client, GatewayIntentBits, Message } from 'discord.js';
 import { messageHandler } from './handlers/message.handler';
 import { connectDB } from './config/db';
+import { logger } from './config/logger';
 
 const client = new Client({
 	intents: [
@@ -13,7 +14,7 @@ const client = new Client({
 
 // when client is connected
 client.on('ready', () => {
-	console.log('Client Connected');
+	logger.info('Client Connected');
 });
 
 // event for when there is a message on chat
@@ -24,5 +25,6 @@ client.on(
 );
 
 connectDB().then(() => {
+	logger.info('DB Connected');
 	client.login(Config.token);
 });
